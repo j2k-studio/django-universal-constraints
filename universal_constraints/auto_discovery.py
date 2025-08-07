@@ -65,7 +65,13 @@ class AutoDiscovery:
                     self._process_model(model, db_alias, converter)
                     total_models_processed += 1
                 except Exception as e:
-                    logger.error(f"Error processing model {model._meta.label} for database '{db_alias}': {e}")
+                    model_label = getattr(model, '_meta', {}).get('label', str(model))
+                    logger.error(
+                        f"Error processing model {model_label} for database '{db_alias}': {e}. "
+                        f"Skipping this model and continuing with others."
+                    )
+                    # Add to warnings for summary
+                    converter.warnings.append(f"Failed to process model {model_label}: {e}")
         
         # Log summary
         total_converted = sum(converter.get_stats()['converted'] for converter in self.converters.values())
@@ -262,12 +268,13 @@ def auto_discover_constraints():
     return discovery.discover_all()
 
 
-def discover_model_constraints(model):
+def discover_model_constraints(model, db_alias='default'):
     """
     Convenience function to discover constraints for a specific model.
     
     Args:
         model: Django model class or model string ('app.Model')
+        db_alias: Database alias to use for settings
     
     Returns:
         list: Converted constraints
@@ -277,7 +284,7 @@ def discover_model_constraints(model):
         model = apps.get_model(app_label, model_name)
     
     discovery = get_discovery_instance()
-    return discovery.discover_model(model)
+    return discovery.discover_model(model, db_alias)
 
 
 def discover_app_constraints(app_label):

@@ -26,7 +26,7 @@ class TestModelWithConstraints(models.Model):
             UniqueConstraint(
                 fields=['email'],
                 condition=Q(is_active=True),
-                name='unique_active_email'
+                name='converter_unique_active_email'
             ),
             UniqueConstraint(
                 fields=['name', 'category'],

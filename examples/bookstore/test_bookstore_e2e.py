@@ -4,8 +4,6 @@ End-to-End Test for Bookstore Universal Constraints Demo
 This single comprehensive test demonstrates how all constraint types work together
 in a realistic bookstore scenario. No test isolation needed - just one continuous
 story that shows constraint validation in action.
-
-Run with: uv run python manage.py test test_bookstore_e2e
 """
 
 import os

@@ -73,7 +73,7 @@ bookstore/
 
 ```bash
 uv sync
-uv run python manage.py test test_bookstore_e2e
+uv run manage.py test test_bookstore_e2e
 ```
 
 **What the E2E test demonstrates:**

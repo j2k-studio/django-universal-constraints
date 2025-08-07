@@ -103,5 +103,9 @@ def should_process_model(model, db_alias, constraint_settings):
     Returns:
         bool: True if model should be processed
     """
-    return (constraint_settings.should_process_model(model, db_alias) and
-            should_process_model_for_database(model, db_alias))
+    # First check constraint settings (includes app filtering)
+    if not constraint_settings.should_process_model(model, db_alias):
+        return False
+    
+    # Then check database routing
+    return should_process_model_for_database(model, db_alias)

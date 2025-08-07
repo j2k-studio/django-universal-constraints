@@ -161,7 +161,13 @@ class UniversalConstraintBackendMixin:
         Return a schema editor class that includes constraint interception.
         """
         # Get the original schema editor class from the parent backend
-        original_schema_editor_class = super()._get_schema_editor_class(*args, **kwargs)
+        # Use the correct method name for Django database backends
+        if hasattr(super(), '_get_schema_editor_class'):
+            original_schema_editor_class = super()._get_schema_editor_class(*args, **kwargs)
+        else:
+            # Fallback for backends that don't have this method
+            from django.db.backends.base.schema import BaseDatabaseSchemaEditor
+            original_schema_editor_class = BaseDatabaseSchemaEditor
         
         # Create a new class that combines our mixin with the original
         class WrappedSchemaEditor(UniversalConstraintSchemaEditor, original_schema_editor_class):
@@ -215,8 +221,23 @@ class DatabaseWrapper(UniversalConstraintBackendMixin):
             logger.debug(f"Successfully imported backend: {wrapped_backend_class}")
             
         except ImportError as e:
+            # Provide more helpful error messages for common issues
+            error_msg = f"Could not import database backend '{wrapped_engine}': {e}"
+            
+            if 'No module named' in str(e):
+                error_msg += (
+                    f"\n\nTroubleshooting tips:\n"
+                    f"1. Ensure '{wrapped_engine}' is installed: pip install <package-name>\n"
+                    f"2. Check that the engine path is correct (e.g., 'django.db.backends.sqlite3')\n"
+                    f"3. Verify the package is in your Python path\n"
+                    f"4. For third-party backends, ensure they're properly installed and configured"
+                )
+            
+            raise ImproperlyConfigured(error_msg)
+        except AttributeError as e:
             raise ImproperlyConfigured(
-                f"Could not import database backend '{wrapped_engine}': {e}"
+                f"Backend '{wrapped_engine}' does not have a DatabaseWrapper class: {e}\n"
+                f"This may not be a valid Django database backend."
             )
         
         # Dynamically create a new class that inherits from both our mixin

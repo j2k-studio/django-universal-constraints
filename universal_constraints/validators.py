@@ -159,24 +159,39 @@ class UniversalConstraint:
     
     def _evaluate_q_object(self, q_obj, instance):
         """Recursively evaluate a Q object against a model instance."""
-        if hasattr(q_obj, 'children'):
-            # Handle Q objects with children (AND/OR operations)
-            results = []
-            for child in q_obj.children:
-                if isinstance(child, models.Q):
-                    results.append(self._evaluate_q_object(child, instance))
-                else:
-                    # Handle individual lookups
-                    results.append(self._evaluate_lookup(child, instance))
-            
-            # Apply the connector (AND/OR)
-            if q_obj.connector == models.Q.AND:
-                return all(results)
-            else:  # OR
-                return any(results)
-        else:
-            # Single condition
-            return self._evaluate_lookup(q_obj, instance)
+        try:
+            if hasattr(q_obj, 'children'):
+                # Handle Q objects with children (AND/OR operations)
+                results = []
+                for child in q_obj.children:
+                    if isinstance(child, models.Q):
+                        results.append(self._evaluate_q_object(child, instance))
+                    else:
+                        # Handle individual lookups
+                        results.append(self._evaluate_lookup(child, instance))
+                
+                # Apply the connector (AND/OR)
+                if q_obj.connector == models.Q.AND:
+                    return all(results)
+                else:  # OR
+                    return any(results)
+            else:
+                # Single condition
+                return self._evaluate_lookup(q_obj, instance)
+        except (AttributeError, TypeError, ValueError) as e:
+            logger.warning(
+                f"Failed to evaluate Q object condition for constraint {self.name}: {e}. "
+                f"Assuming condition applies to be safe."
+            )
+            # Fallback: assume condition applies if we can't evaluate it
+            return True
+        except Exception as e:
+            logger.error(
+                f"Unexpected error evaluating Q object condition for constraint {self.name}: {e}. "
+                f"Assuming condition applies to be safe."
+            )
+            # Fallback: assume condition applies if we can't evaluate it
+            return True
     
     def _evaluate_lookup(self, lookup, instance):
         """Evaluate a single field lookup against a model instance."""

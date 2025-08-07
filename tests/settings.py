@@ -28,8 +28,6 @@ DATABASE_ROUTERS = []
 
 MIDDLEWARE = []
 
-ROOT_URLCONF = 'tests.urls'
-
 TEMPLATES = []
 
 WSGI_APPLICATION = None

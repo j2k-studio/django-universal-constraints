@@ -2,7 +2,6 @@
 Test runner for django-universal-constraints.
 
 This script sets up a minimal Django environment and runs all tests.
-Usage: uv run tests/runtests.py
 """
 
 import os

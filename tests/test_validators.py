@@ -52,13 +52,13 @@ class UniversalConstraintTest(TestCase):
         self.constraint = UniversalConstraint(
             fields=['email'],
             condition=Q(is_active=True),
-            name='unique_active_email'
+            name='validator_unique_active_email'
         )
     
     def test_constraint_creation(self):
         """Test constraint creation and properties."""
         self.assertEqual(self.constraint.fields, ['email'])
-        self.assertEqual(self.constraint.name, 'unique_active_email')
+        self.assertEqual(self.constraint.name, 'validator_unique_active_email')
         self.assertIsNotNone(self.constraint.condition)
     
     def test_constraint_without_condition(self):
@@ -84,7 +84,7 @@ class UniversalConstraintTest(TestCase):
     def test_string_representation(self):
         """Test string representation of constraint."""
         str_repr = str(self.constraint)
-        self.assertIn('unique_active_email', str_repr)
+        self.assertIn('validator_unique_active_email', str_repr)
         self.assertIn('UNIQUE(email)', str_repr)
         self.assertIn('WHERE', str_repr)
     
