@@ -7,34 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.0] - 2025-01-08
 
-### Changed
-- **BREAKING CHANGE**: Removed `REMOVE_DB_CONSTRAINTS` setting and related functionality
-- Simplified architecture to pure application-level validation approach
-- Removed database backend wrapper complexity and migration interception
-- Eliminated singleton pattern from AutoDiscovery class for better testability
-- Removed redundant utility functions and cleaned up dead code
-- Improved code quality and maintainability
-
-### Removed
-- `REMOVE_DB_CONSTRAINTS` configuration option
-- Database constraint interception during migrations
-- Backend wrapper functionality (`universal_constraints/backend/` directory)
-- Singleton pattern implementation
-- Redundant utility functions and entire `utils.py` module
-
-### Technical Details
-- The library now focuses exclusively on application-level constraint validation via Django signals
-- Database backends handle constraint support according to their own capabilities
-- Simplified configuration with only essential settings: `EXCLUDE_APPS`, `RACE_CONDITION_PROTECTION`, `LOG_LEVEL`
-- Maintained 100% backward compatibility for core constraint validation functionality
-- All 44 tests continue to pass with improved code quality
-
-### Migration Guide
-If you were using `REMOVE_DB_CONSTRAINTS` setting:
-1. Remove the `REMOVE_DB_CONSTRAINTS` setting from your `UNIVERSAL_CONSTRAINTS` configuration
-2. The library will continue to work with pure application-level validation
-3. Database-level constraints will be handled by your database backend as intended
-
 ## [1.0.1] - 2025-01-07
 
 ### Added
