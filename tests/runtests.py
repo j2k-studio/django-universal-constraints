@@ -25,6 +25,13 @@ if __name__ == "__main__":
     with connection.schema_editor() as schema_editor:
         from tests.test_validators import ValidatorTestModel, ValidatorTestModelWithConstraints
         from tests.test_constraint_converter import TestModelWithConstraints, TestModelWithoutConstraints, TestModelWithUniqueTogetherOnly
+        from tests.test_auto_discovery import (
+            AutoDiscoveryTestModel, AutoDiscoveryTestModelWithUniqueTogetherOnly
+        )
+        from tests.test_management_commands import (
+            ManagementCommandTestModel, ManagementCommandTestModelWithUniqueTogetherOnly
+        )
+        from tests.test_apps import AppsTestModel
         
         # Create tables for all test models
         test_models = [
@@ -33,6 +40,11 @@ if __name__ == "__main__":
             TestModelWithConstraints,
             TestModelWithoutConstraints,
             TestModelWithUniqueTogetherOnly,
+            AutoDiscoveryTestModel,
+            AutoDiscoveryTestModelWithUniqueTogetherOnly,
+            ManagementCommandTestModel,
+            ManagementCommandTestModelWithUniqueTogetherOnly,
+            AppsTestModel,
         ]
         
         for model in test_models:

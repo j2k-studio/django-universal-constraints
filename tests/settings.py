@@ -50,6 +50,11 @@ UNIVERSAL_CONSTRAINTS = {
         'EXCLUDE_APPS': ['admin', 'auth', 'contenttypes', 'sessions'],
         'RACE_CONDITION_PROTECTION': True,
         'LOG_LEVEL': 'DEBUG',
+    },
+    'default': {
+        'EXCLUDE_APPS': ['admin', 'auth', 'contenttypes', 'sessions'],
+        'RACE_CONDITION_PROTECTION': True,
+        'LOG_LEVEL': 'DEBUG',
     }
 }
 

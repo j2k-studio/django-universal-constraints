@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.0] - 2025-01-08
 
+### Changed
+- **BREAKING**: Removed backend wrapper abstraction layer - now uses pure application-level validation only
+- **BREAKING**: Removed `REMOVE_DB_CONSTRAINTS` setting - database constraints are no longer modified
+
 ## [1.0.1] - 2025-01-07
 
 ### Added
