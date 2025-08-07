@@ -164,7 +164,6 @@ class BookstoreE2ETest(TestCase):
         # ================================================================
         print("\n\n📦 PHASE 3: Inventory Management (Multi-Database)")
         print("-" * 50)
-        print("   Note: Inventory models use 'second_database' with constraints removed from DB")
         
         # ✅ Create locations with unique codes
         print("✅ Creating warehouse locations with unique codes...")
@@ -248,7 +247,6 @@ class BookstoreE2ETest(TestCase):
         # ================================================================
         print("\n\n👥 PHASE 4: Customer Management (unique_together)")
         print("-" * 50)
-        print("   Note: Customer models use 'second_database' with constraints removed from DB")
         
         # ✅ Create customers with unique username+email combinations
         print("✅ Creating customers with unique data...")

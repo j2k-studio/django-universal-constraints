@@ -21,10 +21,14 @@ Some Django database backends (e.g., `django-ydb-backend`) lack support for cond
 - Validation respects Django's database routing system
 
 ### Database Constraint Handling
-Two operational modes:
+All constraints are handled at the application level only. The library provides app-level validation via Django signals, while leaving the original constraint definitions in your models unchanged.
 
-1. **With Backend Wrapper**: Database constraints are intercepted during migrations and removed from schema
-2. **Without Wrapper**: Database constraints remain (may cause errors on unsupported backends)
+**Database Backend Responsibility**: How constraints are handled at the database level depends entirely on the database backend being used:
+- Some backends may skip unsupported constraints during migrations (no error)
+- Some backends may add supported constraints to the database schema
+- Some backends may raise errors for unsupported constraint types
+
+This is now the responsibility of the individual database backend, not this library. The library focuses purely on providing reliable application-level validation that works consistently across all backends.
 
 ### Performance Characteristics
 - **Additional Queries**: 1-2 SELECT queries per save operation for constraint validation
@@ -60,20 +64,7 @@ UNIVERSAL_CONSTRAINTS = {
     'database_alias': {
         'EXCLUDE_APPS': ['admin', 'auth', 'contenttypes', 'sessions'],
         'RACE_CONDITION_PROTECTION': True,  # Default: True
-        'REMOVE_DB_CONSTRAINTS': True,      # Default: True (requires wrapper)
         'LOG_LEVEL': 'INFO',
-    }
-}
-```
-
-### Backend Wrapper (for REMOVE_DB_CONSTRAINTS)
-```python
-DATABASES = {
-    'default': {
-        'ENGINE': 'universal_constraints.backend',
-        'WRAPPED_ENGINE': 'your.actual.backend',  # e.g., 'django.db.backends.sqlite3'
-        'NAME': 'db.sqlite3',
-        # ... other backend-specific settings
     }
 }
 ```
@@ -100,19 +91,17 @@ add_universal_constraint(
 DATABASES = {
     'postgres_db': {
         'ENGINE': 'django.db.backends.postgresql',
-        # PostgreSQL supports constraints natively
     },
     'ydb_database': {
-        'ENGINE': 'universal_constraints.backend',
-        'WRAPPED_ENGINE': 'ydb_backend.backend',
-        # YDB constraints handled at application level
+        'ENGINE': 'ydb_backend.backend',
     }
 }
 
 UNIVERSAL_CONSTRAINTS = {
-    # No entry for 'postgres_db' - uses native constraints
+    'postgres_db': {
+        'RACE_CONDITION_PROTECTION': False,
+    },
     'ydb_database': {
-        'REMOVE_DB_CONSTRAINTS': True,
         'RACE_CONDITION_PROTECTION': True,
     }
 }
@@ -185,7 +174,7 @@ uv run tests/runtests.py
 ### Common Issues
 - **"No such table" errors**: Ensure `universal_constraints` is last in `INSTALLED_APPS`
 - **Constraints not validated**: Check database is configured in `UNIVERSAL_CONSTRAINTS`
-- **Migration failures**: Use backend wrapper with `REMOVE_DB_CONSTRAINTS=True`
+- **Migration failures**: May occur with backends that don't support conditional constraints
 
 ### Debug Logging
 ```python

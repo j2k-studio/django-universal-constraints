@@ -11,7 +11,6 @@ import logging
 DEFAULT_SETTINGS = {
     'EXCLUDE_APPS': ['admin', 'auth', 'contenttypes', 'sessions'],
     'RACE_CONDITION_PROTECTION': True,
-    'REMOVE_DB_CONSTRAINTS': True,
     'LOG_LEVEL': 'INFO',
 }
 
@@ -50,7 +49,7 @@ class ConstraintSettings:
             raise ValueError(f"Invalid LOG_LEVEL for database '{db_alias}': {log_level}")
         
         # Validate boolean settings
-        bool_settings = ['RACE_CONDITION_PROTECTION', 'REMOVE_DB_CONSTRAINTS']
+        bool_settings = ['RACE_CONDITION_PROTECTION']
         for setting in bool_settings:
             if setting in db_settings and not isinstance(db_settings[setting], bool):
                 raise ValueError(f"Setting '{setting}' for database '{db_alias}' must be a boolean")
@@ -59,23 +58,7 @@ class ConstraintSettings:
         exclude_apps = db_settings.get('EXCLUDE_APPS', [])
         if not isinstance(exclude_apps, list):
             raise ValueError(f"EXCLUDE_APPS for database '{db_alias}' must be a list")
-        
-        # Validate backend wrapper requirement
-        self._validate_backend_wrapper_requirement(db_alias, db_settings)
     
-    def _validate_backend_wrapper_requirement(self, db_alias, db_settings):
-        """Validate that backend wrapper is used when REMOVE_DB_CONSTRAINTS is True."""
-        if db_settings.get('REMOVE_DB_CONSTRAINTS', False):
-            # Check if database is using our wrapper
-            db_config = settings.DATABASES.get(db_alias, {})
-            engine = db_config.get('ENGINE', '')
-            if 'universal_constraints.backend' not in engine:
-                logger.warning(
-                    f"Database '{db_alias}' has REMOVE_DB_CONSTRAINTS=True but is not using "
-                    f"the universal_constraints backend wrapper. Constraint removal may not "
-                    f"work properly. Consider using 'universal_constraints.backend' "
-                    f"as your ENGINE with WRAPPED_ENGINE pointing to your actual backend."
-                )
     
     def _configure_logging(self):
         """Configure logging for the unique constraints system."""

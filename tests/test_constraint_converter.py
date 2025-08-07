@@ -8,7 +8,7 @@ from django.db.models import Q, UniqueConstraint
 
 from universal_constraints.constraint_converter import (
     ConstraintConverter,
-    has_universal_constraints
+    has_convertible_constraints
 )
 from universal_constraints.validators import UniversalConstraint
 
@@ -59,19 +59,13 @@ class ConstraintConverterTest(TestCase):
     
     def setUp(self):
         """Set up test fixtures."""
-        self.converter = ConstraintConverter(remove_db_constraints=False)
+        self.converter = ConstraintConverter()
     
     def test_converter_initialization(self):
         """Test converter initialization."""
         self.assertEqual(self.converter.converted_count, 0)
         self.assertEqual(self.converter.skipped_count, 0)
         self.assertEqual(len(self.converter.warnings), 0)
-        self.assertFalse(self.converter.remove_db_constraints)
-    
-    def test_converter_with_remove_db_constraints(self):
-        """Test converter with remove_db_constraints enabled."""
-        converter = ConstraintConverter(remove_db_constraints=True)
-        self.assertTrue(converter.remove_db_constraints)
     
     def test_convert_model_constraints_with_conditional(self):
         """Test converting model with conditional constraints."""
@@ -174,22 +168,6 @@ class ConstraintConverterTest(TestCase):
         ]
         self.assertEqual(len(unique_together), 1)
     
-    def test_convert_with_remove_db_constraints(self):
-        """Test conversion with database constraint removal."""
-        converter = ConstraintConverter(remove_db_constraints=True)
-        
-        original_constraints = list(TestModelWithConstraints._meta.constraints)
-        original_unique_together = TestModelWithConstraints._meta.unique_together
-        
-        constraints = converter.convert_model_constraints(TestModelWithConstraints)
-        
-        # Should have converted constraints
-        self.assertGreater(len(constraints), 0)
-        
-        # Database constraints should be modified (in a real scenario)
-        # Note: In tests, we can't easily verify constraint removal without 
-        # actually running migrations, so we just check the conversion worked
-        self.assertGreater(converter.converted_count, 0)
     
     def test_get_stats(self):
         """Test getting conversion statistics."""
@@ -288,9 +266,9 @@ class ConstraintConverterTest(TestCase):
         converted = self.converter._convert_constraint(regular_constraint, TestModelWithoutConstraints)
         self.assertIsNotNone(converted)  # Should be converted regardless of remove_db_constraints
         
-        # Both converters should convert all UniqueConstraints
-        converter_with_removal = ConstraintConverter(remove_db_constraints=True)
-        converted = converter_with_removal._convert_constraint(regular_constraint, TestModelWithoutConstraints)
+        # All converters should convert all UniqueConstraints
+        another_converter = ConstraintConverter()
+        converted = another_converter._convert_constraint(regular_constraint, TestModelWithoutConstraints)
         self.assertIsNotNone(converted)
         
         # Non-unique constraint should not be converted
@@ -305,8 +283,8 @@ class ConstraintConverterTest(TestCase):
 class UtilityFunctionTest(TestCase):
     """Test utility functions."""
     
-    def test_has_universal_constraints_with_constraints(self):
-        """Test has_universal_constraints with model that has constraints."""
+    def test_has_convertible_constraints_with_constraints(self):
+        """Test has_convertible_constraints with model that has constraints."""
         # Create a fresh model class to avoid test pollution
         class FreshTestModel(models.Model):
             name = models.CharField(max_length=100)
@@ -329,10 +307,10 @@ class UtilityFunctionTest(TestCase):
                 ]
                 unique_together = [('name', 'is_active')]
         
-        self.assertTrue(has_universal_constraints(FreshTestModel))
+        self.assertTrue(has_convertible_constraints(FreshTestModel))
     
-    def test_has_universal_constraints_with_unique_together(self):
-        """Test has_universal_constraints with model that has unique_together."""
+    def test_has_convertible_constraints_with_unique_together(self):
+        """Test has_convertible_constraints with model that has unique_together."""
         # Create a fresh model class to avoid test pollution
         class FreshUniqueTogetherModel(models.Model):
             name = models.CharField(max_length=100)
@@ -342,8 +320,8 @@ class UtilityFunctionTest(TestCase):
                 app_label = 'tests'
                 unique_together = [('name', 'category')]
         
-        self.assertTrue(has_universal_constraints(FreshUniqueTogetherModel))
+        self.assertTrue(has_convertible_constraints(FreshUniqueTogetherModel))
     
-    def test_has_universal_constraints_without_constraints(self):
-        """Test has_universal_constraints with model that has no constraints."""
-        self.assertFalse(has_universal_constraints(TestModelWithoutConstraints))
+    def test_has_convertible_constraints_without_constraints(self):
+        """Test has_convertible_constraints with model that has no constraints."""
+        self.assertFalse(has_convertible_constraints(TestModelWithoutConstraints))

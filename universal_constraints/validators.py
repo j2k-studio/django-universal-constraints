@@ -41,14 +41,13 @@ class UniversalConstraint:
     def __repr__(self):
         return f"<UniversalConstraint: {self.name} on {self.fields}>"
     
-    def validate(self, instance, use_race_protection=None):
+    def validate(self, instance, use_race_protection=True):
         """
         Validate the constraint against the given model instance.
         
         Args:
             instance: Model instance to validate
             use_race_protection: Whether to use select_for_update() for race condition protection.
-                                If None, uses the global setting.
         
         Raises ValidationError if the constraint is violated.
         """
@@ -57,9 +56,6 @@ class UniversalConstraint:
             return
         
         # Determine if we should use race condition protection
-        if use_race_protection is None:
-            use_race_protection = True  # Default fallback
-        
         if use_race_protection:
             self._validate_with_race_protection(instance)
         else:

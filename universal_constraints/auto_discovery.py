@@ -11,8 +11,7 @@ from django.db import models
 from django.conf import settings as django_settings
 
 from .settings import constraint_settings
-from .constraint_converter import ConstraintConverter, has_universal_constraints
-from .utils import should_process_model_for_database, get_database_constraint_status, collect_models_for_database
+from .constraint_converter import ConstraintConverter, has_convertible_constraints
 
 logger = logging.getLogger('universal_constraints.discovery')
 
@@ -97,22 +96,7 @@ class AutoDiscovery:
     def _get_converter_for_database(self, db_alias):
         """Get or create a converter for a specific database."""
         if db_alias not in self.converters:
-            db_settings = self.settings.get_database_settings(db_alias)
-            
-            # Only remove DB constraints if using our backend wrapper
-            remove_db_constraints = False
-            if db_settings.get('REMOVE_DB_CONSTRAINTS', False):
-                db_config = django_settings.DATABASES.get(db_alias, {})
-                engine = db_config.get('ENGINE', '')
-                if 'universal_constraints.backend' in engine:
-                    remove_db_constraints = True
-                    logger.debug(f"Database '{db_alias}' using backend wrapper - will remove DB constraints")
-                else:
-                    logger.debug(f"Database '{db_alias}' not using backend wrapper - will keep DB constraints")
-            
-            self.converters[db_alias] = ConstraintConverter(
-                remove_db_constraints=remove_db_constraints
-            )
+            self.converters[db_alias] = ConstraintConverter()
         return self.converters[db_alias]
     
     def discover_model(self, model, db_alias='default'):
@@ -130,48 +114,34 @@ class AutoDiscovery:
         converter = self._get_converter_for_database(db_alias)
         return self._process_model(model, db_alias, converter)
     
-    def discover_app(self, app_label, db_alias='default'):
-        """
-        Discover and convert constraints for all models in a specific app.
-        
-        Args:
-            app_label: Django app label
-            db_alias: Database alias to use for settings
-        
-        Returns:
-            dict: Summary of results for the app
-        """
-        logger.info(f"Processing app: {app_label} for database '{db_alias}'")
-        
-        try:
-            app_models = apps.get_app_config(app_label).get_models()
-        except LookupError:
-            logger.error(f"App '{app_label}' not found")
-            return {'error': f"App '{app_label}' not found"}
-        
-        processed = 0
-        converted_constraints = []
-        converter = self._get_converter_for_database(db_alias)
-        
-        for model in app_models:
-            if has_universal_constraints(model) and self.settings.should_process_app(model._meta.app_label, db_alias):
-                constraints = self._process_model(model, db_alias, converter)
-                converted_constraints.extend(constraints)
-                processed += 1
-        
-        logger.info(f"Processed {processed} model(s) in app '{app_label}' for database '{db_alias}'")
-        
-        return {
-            'app': app_label,
-            'database': db_alias,
-            'models_processed': processed,
-            'constraints_converted': len(converted_constraints),
-            'constraints': converted_constraints
-        }
-    
     def _get_models_to_process(self, db_alias):
         """Get list of models to process for a specific database."""
-        return collect_models_for_database(db_alias, self.settings)
+        from django.db import router
+        
+        models_to_process = []
+        
+        # Process based on app filtering and database routing for this database
+        for model in apps.get_models():
+            if not has_convertible_constraints(model):
+                continue
+                
+            if not self.settings.should_process_app(model._meta.app_label, db_alias):
+                continue
+                
+            # Use Django's database routing to determine if this model belongs to this database
+            read_db = router.db_for_read(model)
+            write_db = router.db_for_write(model)
+            
+            # If routing returns None, it means the model can use any database
+            # In that case, we'll process it for the 'default' database only to avoid duplicates
+            if read_db is None and write_db is None:
+                if db_alias == 'default':
+                    models_to_process.append(model)
+            # If either read or write routing points to this database, process it
+            elif read_db == db_alias or write_db == db_alias:
+                models_to_process.append(model)
+        
+        return models_to_process
     
     
     def _process_model(self, model, db_alias, converter):
@@ -228,7 +198,6 @@ class AutoDiscovery:
                 'warning_messages': converter.get_warnings(),
                 'settings': {
                     'race_protection': db_settings.get('RACE_CONDITION_PROTECTION', True),
-                    'remove_db_constraints': db_settings.get('REMOVE_DB_CONSTRAINTS', True),
                     'exclude_apps': db_settings.get('EXCLUDE_APPS', []),
                 }
             }
@@ -245,32 +214,20 @@ class AutoDiscovery:
         }
 
 
-# Global discovery instance
-_discovery_instance = None
-
-
-def get_discovery_instance():
-    """Get or create the global discovery instance."""
-    global _discovery_instance
-    if _discovery_instance is None:
-        _discovery_instance = AutoDiscovery()
-    return _discovery_instance
-
-
 def auto_discover_constraints():
     """
-    Convenience function to run auto-discovery with current settings.
+    Run auto-discovery with current settings.
     
     Returns:
         dict: Summary of discovery results
     """
-    discovery = get_discovery_instance()
+    discovery = AutoDiscovery()
     return discovery.discover_all()
 
 
 def discover_model_constraints(model, db_alias='default'):
     """
-    Convenience function to discover constraints for a specific model.
+    Discover constraints for a specific model.
     
     Args:
         model: Django model class or model string ('app.Model')
@@ -283,36 +240,5 @@ def discover_model_constraints(model, db_alias='default'):
         app_label, model_name = model.split('.')
         model = apps.get_model(app_label, model_name)
     
-    discovery = get_discovery_instance()
+    discovery = AutoDiscovery()
     return discovery.discover_model(model, db_alias)
-
-
-def discover_app_constraints(app_label):
-    """
-    Convenience function to discover constraints for all models in an app.
-    
-    Args:
-        app_label: Django app label
-    
-    Returns:
-        dict: Summary of results for the app
-    """
-    discovery = get_discovery_instance()
-    return discovery.discover_app(app_label)
-
-
-def get_discovery_summary():
-    """
-    Get summary of the last discovery run.
-    
-    Returns:
-        dict: Summary information
-    """
-    discovery = get_discovery_instance()
-    return discovery._get_summary()
-
-
-def reset_discovery():
-    """Reset the global discovery instance (useful for testing)."""
-    global _discovery_instance
-    _discovery_instance = None

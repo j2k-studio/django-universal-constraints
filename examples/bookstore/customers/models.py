@@ -2,7 +2,7 @@
 Customers app models demonstrating universal constraints.
 
 This module shows simplified customer models with unique_together constraints
-for the second_database (constraints removed from DB schema).
+for the second_database (app-level validation only).
 """
 
 from django.db import models

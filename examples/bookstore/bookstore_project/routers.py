@@ -10,9 +10,6 @@ class DatabaseRouter:
     """
     A router to control all database operations on models for different
     databases to demonstrate universal_constraints functionality.
-    
-    - books app: Uses 'default' database (constraints kept in DB)
-    - inventory and customers apps: Use 'second_database' (constraints removed from DB)
     """
 
     # Apps that should use the second_database

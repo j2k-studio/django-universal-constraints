@@ -39,8 +39,7 @@ DATABASES = {
         'NAME': ':memory:',
     },
     'test': {
-        'ENGINE': 'universal_constraints.backend',
-        'WRAPPED_ENGINE': 'django.db.backends.sqlite3',
+        'ENGINE': 'django.db.backends.sqlite3',
         'NAME': ':memory:',
     }
 }
@@ -50,7 +49,6 @@ UNIVERSAL_CONSTRAINTS = {
     'test': {
         'EXCLUDE_APPS': ['admin', 'auth', 'contenttypes', 'sessions'],
         'RACE_CONDITION_PROTECTION': True,
-        'REMOVE_DB_CONSTRAINTS': True,
         'LOG_LEVEL': 'DEBUG',
     }
 }

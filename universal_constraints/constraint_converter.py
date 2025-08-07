@@ -16,8 +16,7 @@ logger = logging.getLogger('universal_constraints.converter')
 class ConstraintConverter:
     """Converts Django constraints to application-level constraints."""
     
-    def __init__(self, remove_db_constraints=True):
-        self.remove_db_constraints = remove_db_constraints
+    def __init__(self):
         self.converted_count = 0
         self.skipped_count = 0
         self.warnings = []
@@ -29,27 +28,22 @@ class ConstraintConverter:
         converted_constraints = []
         
         # Convert Meta.constraints (UniqueConstraint objects)
+        # Note: We keep the original constraints in the model Meta - the database backend
+        # will handle them according to its capabilities (skip, add, etc.)
         if hasattr(model._meta, 'constraints'):
-            for constraint in list(model._meta.constraints):
+            for constraint in model._meta.constraints:
                 converted = self._convert_constraint(constraint, model)
                 if converted:
                     converted_constraints.append(converted)
-                    if self.remove_db_constraints:
-                        model._meta.constraints.remove(constraint)
         
         # Convert Meta.unique_together
+        # Note: We keep the original unique_together - the database backend
+        # will handle it according to its capabilities
         if hasattr(model._meta, 'unique_together') and model._meta.unique_together:
-            unique_together_converted = []
             for fields in model._meta.unique_together:
                 converted = self._convert_unique_together(fields, model)
                 if converted:
                     converted_constraints.append(converted)
-                    unique_together_converted.append(converted)
-            
-            # Remove unique_together if we're removing DB constraints and we converted any
-            if self.remove_db_constraints and unique_together_converted:
-                logger.debug(f"Removing unique_together from {model._meta.label}")
-                model._meta.unique_together = []
         
         # Add converted constraints to model
         if converted_constraints:
@@ -75,11 +69,9 @@ class ConstraintConverter:
             fields = list(constraint.fields)
             name = getattr(constraint, 'name', None) or f"converted_{constraint.__class__.__name__}"
             
-            # ALWAYS convert ALL UniqueConstraints to app-level validation
-            # This is the core purpose of this library
             converted = UniversalConstraint(
                 fields=fields,
-                condition=condition,  # None for non-conditional constraints
+                condition=condition,
                 name=name
             )
             
@@ -146,31 +138,15 @@ class ConstraintConverter:
         self.skipped_count = 0
         self.warnings = []
 
-
-def convert_model_constraints(model, remove_db_constraints=True):
+def has_convertible_constraints(model):
     """
-    Convenience function to convert constraints for a single model.
-    
-    Args:
-        model: Django model class
-        remove_db_constraints: Whether to remove original constraints from Meta
-    
-    Returns:
-        List of converted UniversalConstraint objects
-    """
-    converter = ConstraintConverter(remove_db_constraints)
-    return converter.convert_model_constraints(model)
-
-
-def has_universal_constraints(model):
-    """
-    Check if a model has any unique constraints that can be converted.
+    Check if a model has any constraints that can be converted.
     
     Args:
         model: Django model class
     
     Returns:
-        bool: True if model has convertible unique constraints
+        bool: True if model has convertible constraints
     """
     # Check Meta.constraints for UniqueConstraint objects
     if hasattr(model._meta, 'constraints'):
@@ -203,7 +179,6 @@ def get_constraint_info(model):
         'model': model._meta.label,
         'constraints': [],
         'unique_together': [],
-        'has_conditions': False
     }
     
     # Track constraint names and unique_together to avoid duplicates
@@ -233,9 +208,6 @@ def get_constraint_info(model):
                     }
                     info['constraints'].append(constraint_info)
                     constraint_names.add(constraint_name)
-                    
-                    if condition:
-                        info['has_conditions'] = True
     
     # Then, handle original constraints (not yet converted)
     if hasattr(model._meta, 'constraints'):
@@ -250,9 +222,6 @@ def get_constraint_info(model):
                     }
                     info['constraints'].append(constraint_info)
                     constraint_names.add(constraint_name)
-                    
-                    if constraint_info['condition']:
-                        info['has_conditions'] = True
     
     # Finally, handle original unique_together (only if not already converted)
     if hasattr(model._meta, 'unique_together') and model._meta.unique_together:

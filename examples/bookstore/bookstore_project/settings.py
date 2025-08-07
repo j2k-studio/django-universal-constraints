@@ -70,17 +70,15 @@ WSGI_APPLICATION = 'bookstore_project.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-# Multi-database setup demonstrating both scenarios:
-# - default: Standard backend with constraints kept in DB schema
-# - second_database: Wrapped backend with constraints removed from DB schema
+# Multi-database setup demonstrating app-level constraint validation
+# Both databases use standard Django backends with app-level validation only
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'bookstore.sqlite3',
     },
     'second_database': {
-        'ENGINE': 'universal_constraints.backend',
-        'WRAPPED_ENGINE': 'django.db.backends.sqlite3',
+        'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'bookstore_second.sqlite3',
     }
 }
@@ -135,18 +133,14 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # https://github.com/your-repo/django-universal-constraints
 
 UNIVERSAL_CONSTRAINTS = {
-    # Configuration for the 'default' database - constraints kept in DB schema
     'default': {
         'EXCLUDE_APPS': ['admin', 'auth', 'contenttypes', 'sessions'],
         'RACE_CONDITION_PROTECTION': True,
-        'REMOVE_DB_CONSTRAINTS': False,  # Keep constraints in database
         'LOG_LEVEL': 'INFO',
     },
-    # Configuration for the 'second_database' - constraints removed from DB schema
     'second_database': {
         'EXCLUDE_APPS': ['admin', 'auth', 'contenttypes', 'sessions'],
         'RACE_CONDITION_PROTECTION': True,
-        'REMOVE_DB_CONSTRAINTS': True,   # Remove constraints from database
         'LOG_LEVEL': 'INFO',
     }
 }

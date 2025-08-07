@@ -8,10 +8,10 @@ to application-level validation based on the current UNIVERSAL_CONSTRAINTS setti
 import json
 from django.core.management.base import BaseCommand
 from django.apps import apps
+from django.db import router
 
 from universal_constraints.constraint_converter import get_constraint_info
 from universal_constraints.settings import constraint_settings
-from universal_constraints.utils import should_process_model_for_database, get_database_constraint_status
 
 
 class Command(BaseCommand):
@@ -63,8 +63,9 @@ class Command(BaseCommand):
             # Collect models for this database (respecting database routing)
             models_info = []
             for model in apps.get_models():
+                # Check if this model should be processed for this database
                 if (constraint_settings.should_process_model(model, db_alias) and
-                    should_process_model_for_database(model, db_alias)):
+                    self._should_model_use_database(model, db_alias)):
                     info = get_constraint_info(model)
                     if info['constraints'] or info['unique_together']:
                         models_info.append((model, info))
@@ -78,7 +79,6 @@ class Command(BaseCommand):
             databases_info[db_alias] = {
                 'settings': db_settings,
                 'models': models_info,
-                'constraint_status': get_database_constraint_status(db_alias, db_settings)
             }
         
         # Add consolidated summary to the result
@@ -93,6 +93,11 @@ class Command(BaseCommand):
         
         return databases_info
     
+    def _should_model_use_database(self, model, db_alias):
+        """Check if a model should use a specific database according to Django's routing."""
+        # Use Django's router to determine the correct database for this model
+        suggested_db = router.db_for_write(model)
+        return suggested_db == db_alias or suggested_db is None
 
     def _output_text(self, configured_databases):
         """Output results in text format."""
@@ -108,9 +113,8 @@ class Command(BaseCommand):
                 
             db_settings = db_info['settings']
             models_info = db_info['models']
-            constraint_status = db_info['constraint_status']
             
-            self.stdout.write(f"\nDatabase: {db_alias} ({constraint_status})")
+            self.stdout.write(f"\nDatabase: {db_alias}")
             
             exclude_apps = db_settings.get('EXCLUDE_APPS', [])
             if exclude_apps:
@@ -177,9 +181,7 @@ class Command(BaseCommand):
                 'settings': {
                     'exclude_apps': db_settings.get('EXCLUDE_APPS', []),
                     'race_condition_protection': db_settings.get('RACE_CONDITION_PROTECTION', True),
-                    'remove_db_constraints': db_settings.get('REMOVE_DB_CONSTRAINTS', True),
                     'log_level': db_settings.get('LOG_LEVEL', 'INFO'),
-                    'constraint_status': db_info['constraint_status']
                 },
                 'models': {}
             }

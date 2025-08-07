@@ -24,7 +24,6 @@ class ConstraintSettingsTest(TestCase):
         expected_defaults = {
             'EXCLUDE_APPS': ['admin', 'auth', 'contenttypes', 'sessions'],
             'RACE_CONDITION_PROTECTION': True,
-            'REMOVE_DB_CONSTRAINTS': True,
             'LOG_LEVEL': 'INFO',
         }
         
@@ -49,7 +48,6 @@ class ConstraintSettingsTest(TestCase):
         self.assertEqual(db_settings['EXCLUDE_APPS'], ['custom_app'])  # Overridden
         self.assertEqual(db_settings['LOG_LEVEL'], 'DEBUG')  # Overridden
         self.assertTrue(db_settings['RACE_CONDITION_PROTECTION'])  # Default
-        self.assertTrue(db_settings['REMOVE_DB_CONSTRAINTS'])  # Default
     
     @override_settings(UNIVERSAL_CONSTRAINTS={
         'test_db': {
@@ -90,67 +88,6 @@ class ConstraintSettingsTest(TestCase):
         self.assertIn("EXCLUDE_APPS", str(cm.exception))
         self.assertIn("must be a list", str(cm.exception))
     
-    @override_settings(
-        UNIVERSAL_CONSTRAINTS={
-            'test_db': {
-                'REMOVE_DB_CONSTRAINTS': True,
-            }
-        },
-        DATABASES={
-            'test_db': {
-                'ENGINE': 'django.db.backends.sqlite3',
-                'NAME': ':memory:',
-            }
-        }
-    )
-    def test_backend_wrapper_warning(self):
-        """Test warning when REMOVE_DB_CONSTRAINTS=True without wrapper."""
-        with self.assertLogs('universal_constraints.settings', level='WARNING') as cm:
-            ConstraintSettings()
-        
-        self.assertEqual(len(cm.output), 1)
-        self.assertIn("REMOVE_DB_CONSTRAINTS=True", cm.output[0])
-        self.assertIn("not using the universal_constraints backend wrapper", cm.output[0])
-    
-    @override_settings(
-        UNIVERSAL_CONSTRAINTS={
-            'test_db': {
-                'REMOVE_DB_CONSTRAINTS': True,
-            }
-        },
-        DATABASES={
-            'test_db': {
-                'ENGINE': 'universal_constraints.backend',
-                'WRAPPED_ENGINE': 'django.db.backends.sqlite3',
-                'NAME': ':memory:',
-            }
-        }
-    )
-    def test_no_warning_with_wrapper(self):
-        """Test no warning when using wrapper with REMOVE_DB_CONSTRAINTS=True."""
-        # When using the wrapper, no warnings should be logged
-        # We can't use assertLogs because it expects logs to be present
-        # Instead, we'll capture logs manually and verify none are generated
-        import logging
-        
-        # Create a custom handler to capture logs
-        log_messages = []
-        handler = logging.Handler()
-        handler.emit = lambda record: log_messages.append(record.getMessage())
-        
-        logger = logging.getLogger('universal_constraints.settings')
-        original_level = logger.level
-        logger.addHandler(handler)
-        logger.setLevel(logging.WARNING)
-        
-        try:
-            ConstraintSettings()
-            # Check that no warning messages were logged
-            warning_messages = [msg for msg in log_messages if 'REMOVE_DB_CONSTRAINTS=True' in msg]
-            self.assertEqual(len(warning_messages), 0, "Expected no warnings but got: " + str(warning_messages))
-        finally:
-            logger.removeHandler(handler)
-            logger.setLevel(original_level)
     
     @override_settings(UNIVERSAL_CONSTRAINTS={
         'test_db': {

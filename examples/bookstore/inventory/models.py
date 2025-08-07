@@ -2,7 +2,7 @@
 Inventory app models demonstrating universal constraints.
 
 This module shows simplified inventory models with different constraint types
-for the second_database (constraints removed from DB schema).
+for the second_database (app-level validation only).
 """
 
 from django.db import models
